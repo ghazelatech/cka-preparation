@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: gta-pod
+spec:
+  containers:
+  - name: gta-container
+    image: nginx

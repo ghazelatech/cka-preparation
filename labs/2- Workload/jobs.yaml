@@ -1,0 +1,13 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: gta-job
+spec:
+  template:
+    spec:
+      containers:
+      - name: gta-pods
+        image: busybox
+        command: ["/bin/sh"]
+        args: ["-c", "echo Hello World"]
+      restartPolicy: Never
