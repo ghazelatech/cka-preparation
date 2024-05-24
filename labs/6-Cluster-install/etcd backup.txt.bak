@@ -1,0 +1,61 @@
+* Etcd Backup and Restore on Kubernetes Cluster
+
+In Kubernetes architecture, etcd is an integral part of the cluster. All the cluster objects and their state is stored in etcd. Few things you should know about etcd from a Kubernetes perspective.
+
+1- It is a consistent, distributed, and secure key-value store.
+2- It uses raft protocol.
+3- Supports highly available architecture with stacked etcd.
+4- It stores kubernetes cluster configurations, all API objects, object states, and service discovery details.
+
+Follow the steps given below to take an etcd snapshot.
+
+Step 1: Log in to the control plane.
+
+Step 2: If you don’t have etcdctl in your cluster control plane, install it using the following command.
+
+	sudo apt install etcd-client
+
+Step 3: We need to pass the following three pieces of information to etcdctl to take an etcd snapshot.
+	1- etcd endpoint (--endpoints)
+	2- ca certificate (--cacert)
+	3- server certificate (--cert)
+	4- server key (--key)
+
+From the etcd static pod manifest file located at /etc/kubernetes/manifests/etcd.yaml the location
+
+You can also get the above details by describing the etcd pod running in the kube-system namespace. While describing the pod, replace etcd-master-node with your etcd pod name.
+
+kubectl get po -n kube-system
+kubectl describe pod etcd-master-node -n kube-system
+
+Step 4: Take an etcd snapshot backup using the following command.
+
+ETCDCTL_API=3 etcdctl \
+  --endpoints=https://127.0.0.1:2379 \
+  --cacert=<ca-file> \
+  --cert=<cert-file> \
+  --key=<key-file> \
+  snapshot save <backup-file-location>
+
+The command looks like the following when you add the actual location and parameters. Execute the command to perform a backup. You can replace /opt/backup/etcd.db with the location and name of your choice.
+
+ETCDCTL_API=3 etcdctl \
+  --endpoints=https://127.0.0.1:2379 \
+  --cacert=/etc/kubernetes/pki/etcd/ca.crt \
+  --cert=/etc/kubernetes/pki/etcd/server.crt \
+  --key=/etc/kubernetes/pki/etcd/server.key \
+  snapshot save /opt/backup/etcd.db
+
+On a successful execution you will get a “Snapshot saved at /opt/backup/etcd.db”, message as shown below.
+
+Also, you can verify the snapshot using the following command.
+
+ETCDCTL_API=3 etcdctl --write-out=table snapshot status /opt/backup/etcd.db
+
+Here is an example output:
++----------+----------+------------+------------+
+|   HASH   | REVISION | TOTAL KEYS | TOTAL SIZE |
++----------+----------+------------+------------+
+| b7147656 |    51465 |       1099 |     5.1 MB |
++----------+----------+------------+------------+
+
