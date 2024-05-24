@@ -1,0 +1,17 @@
+If you’re preparing for the CKA exam, it will be helpful to thoroughly understand the following points:
+
+Creating a NetworkPolicy to restrict access to only specific namespaces to an Ingress.
+Updating previously declared resource of a PersistentVolume using kubectl edit or patch after creation.
+Creating an Ingress controller and verifying access to a web page using a command like Curl to ensure of getting 200 OK responses.
+Upgrading the software version of the control plane after draining the node.
+Generating Roles or ClusterRoles according to given conditions and binding them to specific users or service accounts.
+Creating a ServiceAccount and performing ClusterRole and ClusterRoleBinding on it.
+Understanding the ETCD CLI commands and flag options used for ETCD backup and restore.
+Identifying nodes or pods with high CPU usage.
+Finding nodes in Ready or NotReady state and copying taht information to a specific text file.
+Creating a pod with sidecar containers according to specified conditions.
+Running multi-container setups with shared volumes.
+Creating NodePort type services.
+Generating pods on designated nodes using NodeSelector.
+Resolving issues with kubelet on nodes experiencing problems to ensure normal operation of a K8s cluster.
+Upgrading a Kubernetes cluster using kubeadm.

@@ -1,0 +1,16 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: gta-daemonset
+spec:
+  selector:
+    matchLabels:
+      name: gta-all-pods
+  template:
+    metadata:
+      labels:
+        name: gta-all-pods
+    spec:
+      containers:
+      - name: gta-pods
+        image: nginx
