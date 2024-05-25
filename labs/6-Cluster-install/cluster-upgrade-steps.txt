@@ -1,0 +1,178 @@
+* Upgrading Kubeadm Cluster
+
+We need to run the upgrades in the following order
+	- Control plane node
+	- Worker Nodes
+
+Also, we need to upgrade the following components on both the control plane and the worker nodes.
+	- Kubeadm
+	- Kubelet
+	- Kubectl
+	
+Before we get started you should know the cluster and node names. Execute the following command to get the node names.
+	kubectl get nodes
+
+* Upgrade The Control Plane
+	Following are the high level steps for the control plane upgrade
+
+	1- Login to control plane
+	2- Check the existing version
+	3- unhold kubeadm and Install the latest kubeadm version
+	4- Decide on the upgrade version by running a kubeadm upgrade plan (Same version patch or new version)
+	5- Apply Kubeadm upgrade
+	6- Evict all workloads from control plane except daemonsets
+	7- Upgrade kubectl and kubelet.
+	8- Make the control plane schedulable (Uncordon)
+
+Step 1: Check the existing Kubeadm version
+
+Login to the control plane and can check the existing version using the following command:
+	kubeadm version -o json
+
+Step 2: unhold kubeadm and Install the latest version
+
+During the Kubeadm cluster installation process, you would have hold the kubeadm installation to prevent upgrades.
+
+Now we need to unhold kubeadm.
+	sudo apt-mark unhold kubeadm 
+
+Check the available latest Kubeadm version using the following command.
+	sudo apt-cache madison kubeadm | tac
+
+In my case the latest version is 1.29.3-1.1. Update and install the latest version using the following command. Replace the version number you get from the output.
+	sudo apt-get update -y
+	sudo apt-get install -y kubeadm=1.29.3-1.1
+
+Hold kubeadm package.
+	sudo apt-mark hold kubeadm
+
+Step 3: Decide on the upgrade version
+
+You can get the list of available kubernetes version using the kubeadm upgrade plan.
+
+	sudo kubeadm upgrade plan
+
+The output will show the version that can be applied for the upgrade. In my case the version to be upgraded is v1.29.3. Change this version as per your output.
+
+Step 4: Apply Kubeadm upgrade
+
+Apply the upgrade using the following command with the version.
+
+	kubeadm upgrade apply v1.29.3
+
+Now if you check the kubeadm version, you can see the upgraded version.
+	$ kubeadm version -o json
+	{
+	  "clientVersion": {
+		"major": "1",
+		"minor": "29",
+		"gitVersion": "v1.29.3",
+		"gitCommit": "6813625b7cd706db5bc7388921be03071e1a492d",
+		"gitTreeState": "clean",
+		"buildDate": "2024-03-15T00:06:16Z",
+		"goVersion": "go1.21.8",
+		"compiler": "gc",
+		"platform": "linux/amd64"
+	  }
+	}
+
+Step 6: Drain the Node to evict all workloads.
+
+To apply the upgrade we nee to evict all the workloads except daemonsets using the following command. Replace controlplane with your controlplane node name.
+
+	kubectl drain controlplane --ignore-daemonsets
+
+Step 7: Upgrade Kubelet and Kubectl.
+
+Unhold and upgrade kubectl and kubelet using the following commands.
+
+	sudo apt-mark unhold kubelet kubectl && \
+	sudo apt-get update && sudo apt-get install -y kubelet=1.29.3-1.1 kubectl=1.29.3-1.1 && \
+	sudo apt-mark hold kubelet kubectl
+
+Restart the services.
+
+	sudo systemctl daemon-reload
+	sudo systemctl restart kubelet
+
+Step 7: Uncordon the Node and Verify the Node Status
+
+Use the following command to uncordon the control plane node
+	kubectl uncordon controlplane
+
+Verify the node status and version using the following command.
+	kubectl get nodes
+
+You can see the control plane upgraded to the new version and nodes running on the old version as shown below.
+
+* Upgrade Worker Nodes
+
+Worker node upgrade steps are similar to control plane upgrade. However the internal upgrade process differ from control plane.
+
+All the following steps should be executed on the Worker node. If you have multiple worker nodes, upgrade one at a time.
+
+Step 1: Unhold Kubeadm and Install Required Version
+
+Install the required version of Kubeadm on worker nodes. Replace 1.29.3-1.1 with you version.
+
+	sudo apt-mark unhold kubeadm && \
+	sudo apt-get update && sudo apt-get install -y kubeadm=1.29.3-1.1 && \
+	sudo apt-mark hold kubeadm
+
+Step 2: Upgrde Kubeadm
+
+As you are running the following command on a worker node, it skips all the steps required for the control plane and update only kubelet configuration required for a worker node.
+
+	sudo kubeadm upgrade node
+
+Step 3: Drain the Node
+
+Evict all the pods on the worker node by draining it. Replace node01 with your worker node name. Execute this command from terminal where you have kubectl access.
+
+	kubectl drain node01 --ignore-daemonsets
+
+If pods are using local storage, you might get the following error. This is mostly occur in vagrant setup. In CKA exam, you will not probably face this issue.
+
+		error: unable to drain node "node01" due to error:cannot delete Pods with local storage (use --delete-emptydir-data to override): kube-system/metrics-server-69fb86cf66-nqmhn, continuing command...
+		There are pending nodes to be drained:
+		 node01
+		cannot delete Pods with local storage (use --delete-emptydir-data to override): kube-system/metrics-server-69fb86cf66-nqmhn
+
+To rectify that issues, you need to add the --delete-local-data as well.
+
+	sudo kubectl drain node01 --ignore-daemonsets --delete-local-data
+
+Step 4: Upgrade Kubelet & Kubectl
+
+	sudo apt-mark unhold kubelet kubectl && \
+	sudo apt-get update && sudo apt-get install -y kubelet=1.29.3-1.1 kubectl=1.29.3-1.1 && \
+	sudo apt-mark hold kubelet kubectl
+
+Restart kubelet
+
+	sudo systemctl daemon-reload
+	sudo systemctl restart kubelet
+
+Step 5: Uncordon worker node
+
+Execute the following uncordon command from the node where you have kubectl access.
+
+	kubectl uncordon node01
+
+Verify Cluster Upgrade
+
+Now that we have upgraded the control plane node and the worker nodes, lets verify if the cluster is upgraded and working as expected.
+
+Get the node information
+	kubectl get nodes
+
+You should see the control plane and worker nodes upgraded to the specified version.
+
+From the control plane node, you can use any one of the following kubectl commands to check the status of all the cluster components.
+
+	kubectl get --raw='/readyz?verbose'
+	curl -k https://localhost:6443/livez?verbose
+
+Also, check if all the kube-system control node pods are running.
+
+	kubectl get po -n kube-system
